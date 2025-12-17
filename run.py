@@ -7,6 +7,7 @@ from sklearn.decomposition import PCA
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
+from collections import Counter
 
 from train_test import load_dataset, load_labels
 from randperm import get_invperm
@@ -51,50 +52,56 @@ y_test_final = y_calendar[val_end:]
 # Prepare for MLP, CNN, SVM
 # CNN
 X_train_cnn = X_train_final[..., np.newaxis]
-X_val_cnn   = X_val_final[..., np.newaxis]
-X_test_cnn  = X_test_final[..., np.newaxis]
+X_val_cnn = X_val_final[..., np.newaxis]
+X_test_cnn = X_test_final[..., np.newaxis]
 
 # MLP and SVM
 X_train_flat = X_train_final.reshape(len(X_train_final), -1)
-X_val_flat   = X_val_final.reshape(len(X_val_final), -1)
-X_test_flat  = X_test_final.reshape(len(X_test_final), -1)
+X_val_flat = X_val_final.reshape(len(X_val_final), -1)
+X_test_flat = X_test_final.reshape(len(X_test_final), -1)
 
 # Reshape data
 num_samples_train = X_train_final.shape[0]
-num_samples_val   = X_val_final.shape[0]
-num_samples_test  = X_test_final.shape[0]
+num_samples_val = X_val_final.shape[0]
+num_samples_test = X_test_final.shape[0]
 
 num_sensors = 963
-num_time    = 144
+num_time = 144
 
 # Reshape back to (samples, sensors, time)
 X_train_final = X_train_final.reshape(num_samples_train, num_sensors, num_time)
-X_val_final   = X_val_final.reshape(num_samples_val, num_sensors, num_time)
-X_test_final  = X_test_final.reshape(num_samples_test, num_sensors, num_time)
+X_val_final = X_val_final.reshape(num_samples_val, num_sensors, num_time)
+X_test_final = X_test_final.reshape(num_samples_test, num_sensors, num_time)
 
 # Add channel dimension for Conv2D
 X_train_cnn = X_train_final[..., np.newaxis]
-X_val_cnn   = X_val_final[..., np.newaxis]
-X_test_cnn  = X_test_final[..., np.newaxis]
+X_val_cnn = X_val_final[..., np.newaxis]
+X_test_cnn = X_test_final[..., np.newaxis]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 X_train_tensor = torch.tensor(X_train_cnn, dtype=torch.float32).permute(0,3,1,2).to(device) # (N,1,963,144)
 y_train_tensor = torch.tensor(y_train_final, dtype=torch.long).to(device)
-X_val_tensor   = torch.tensor(X_val_cnn, dtype=torch.float32).permute(0,3,1,2).to(device)
-y_val_tensor   = torch.tensor(y_val_final, dtype=torch.long).to(device)
-X_test_tensor  = torch.tensor(X_test_cnn, dtype=torch.float32).permute(0,3,1,2).to(device)
-y_test_tensor  = torch.tensor(y_test_final, dtype=torch.long).to(device)
+X_val_tensor = torch.tensor(X_val_cnn, dtype=torch.float32).permute(0,3,1,2).to(device)
+y_val_tensor = torch.tensor(y_val_final, dtype=torch.long).to(device)
+X_test_tensor = torch.tensor(X_test_cnn, dtype=torch.float32).permute(0,3,1,2).to(device)
+y_test_tensor = torch.tensor(y_test_final, dtype=torch.long).to(device)
 
 train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
-val_dataset   = TensorDataset(X_val_tensor, y_val_tensor)
-test_dataset  = TensorDataset(X_test_tensor, y_test_tensor)
+val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
+test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
 
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-val_loader   = DataLoader(val_dataset, batch_size=16, shuffle=False)
-test_loader  = DataLoader(test_dataset, batch_size=16, shuffle=False)
+val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
 num_classes = len(np.unique(y_train_final))
+
+class_counts = Counter(y_train_final)
+
+print("Class counts:")
+for k in sorted(class_counts.keys()):
+    print(f"Number of {k} targets: {class_counts[k]}")
 
 class PEMS_CNN(nn.Module):
     def __init__(self, num_classes):

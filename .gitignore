@@ -180,5 +180,6 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Dataset folders
+# Dataset folders and outputs
 pems+sf/
+graphs/
